@@ -1,4 +1,7 @@
 # 屎山代码，懒得优化了，能跑就行。很多地方写的纯纯是一坨屎。
+# 不过能用就是
+# 等有时间了再重构个GUI版本的，这个将就用，各位也可以自己根据需要修改源代码。
+# 如果不会python的也可以根据我的注释来看，只要输入cookie跟自己的xlsx表格链接就可以正常跑了。
 
 import requests as req
 import re
@@ -15,11 +18,12 @@ class apf:
 
         init(autoreset=True)
 
-        #你的夸克登录Cookie
+        #你的夸克登录Cookie，直接F12开发者工具随便点开个链接往下拉就可以看到Cookie，完整复制替换Your Cookie即可！
         self.cookie = "Your Cookie"
         #获取全部文件的URL
         self.getAllFiles_Url = "https://drive-pc.quark.cn/1/clouddrive/file/sort?pr=ucpro&fr=pc&uc_param_str=&pdir_fid=0&_page=1&_size=100&_fetch_total=false&_fetch_sub_dirs=1&_sort=&__dt=108496&__t=1729840382463"
 
+        #User Agent
         self.UserAgent = [
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -59,12 +63,16 @@ class apf:
         sheet = workbook.active  # 或者通过名称获取
 
         #page_start = 43
+        #开始的行数，也就是第一款游戏的行数！可以根据自己的需求更改或者优化代码！
         page_start = 931
+        #结束的行数
         page_end = 949
         # page_end = 498
         #page_end = 927
+        #读取游戏名称跟链接
         self.quark_name_List = []
         self.quark_link_List = []
+        #计数
         n = 1
         for row_index in range(page_start, page_end + 1):
             row_values = []
@@ -82,22 +90,32 @@ class apf:
             if row_values:
                 print(str(n) + "." + str(row_values))
                 reTxt = re.sub(r'[:<>|*?,/%]', '', str(row_values))
+                #将名称压入列表当中
                 self.quark_name_List.append(reTxt)
             if row_values2:
                 print(str(n) + "." + str(row_values2))
+                # 将链接压入列表当中
                 self.quark_link_List.append(row_values2)
                 n += 1
         workbook.close()
 
     def getUser_AllFiles(self):
+        # 云盘所有文件
         self.allFiles_dict_name = {}
+        # 云盘所有文件分别对应的ID
         self.allFiles_dict_Id = {}
+        # 云盘所有文件分别对应的platformSource
         self.allFiles_dict_platformSource = {}
+        # 开始获取云盘所有链接
         resu = req.get(url=self.getAllFiles_Url, headers=self.get_headers).text
+        # 从返回的数据当中提取出文件夹名称
         takeFile_Name = re.findall(r'"file_name":"([^"]+)"', resu)
+        # 从返回的数据当中提取出文件夹ID
         takeFile_Id = re.findall(r'"fid":"([^"]+)"',resu)
+        # 从返回的数据当中提取出PlatformSource
         takeFile_platformSource = re.findall(r'"platform_source":"([^"]+)"', resu)
         count = 0
+        # 将数据全部压入字典当中
         for name, Id,platformSource in zip(takeFile_Name, takeFile_Id,takeFile_platformSource):
             self.allFiles_dict_name[str(count)] = name
             self.allFiles_dict_Id[str(count)] = Id
@@ -107,6 +125,7 @@ class apf:
             count += 1
 
     def getSelectorFile_Id(self):
+        # 输入保存游戏的文件夹
         self.selectorFile_Id = input(Fore.RED + "请输入指定文件夹用于保存文件（序号）(退出：-1)：")
         if self.selectorFile_Id != "-1":
             print("当前选择文件夹：" + Fore.YELLOW + self.allFiles_dict_name[self.selectorFile_Id])
@@ -123,6 +142,7 @@ class apf:
             return
 
     def controll_CreateFiles(self):
+        # 开始遍历读取相应的游戏
         for quark_name,quark_link in zip(self.quark_name_List,self.quark_link_List):
             local_url = "https://drive-pc.quark.cn/1/clouddrive/file?pr=ucpro&fr=pc&uc_param_str="
             data = {
@@ -132,9 +152,10 @@ class apf:
                 'dir_init_lock': 'false'
             }
 
+            # 开始创建文件夹
             resu = req.post(url=local_url, headers=self.post_headers, json=data)
             print(Fore.LIGHTBLACK_EX + "返回代码：{\n" + resu.text + "\n}\n")
-            tempTxt = str(re.findall(r'"status":([^"]+),', resu.text))
+            tempTxt = str(re.search(r'"status":([^"]+),', resu.text).group(1))
             tempTxt = tempTxt.replace('[', '').replace(']', '').replace("'", '')
             if tempTxt == "200":
                 print(Fore.LIGHTMAGENTA_EX + Fore.LIGHTMAGENTA_EX + str(quark_name).replace('[','').replace(']','').replace("'",'') + "创建文件夹成功!\n")
@@ -148,13 +169,10 @@ class apf:
                 print(Fore.LIGHTMAGENTA_EX + str(quark_name).replace('[','').replace(']','').replace("'",'') +" 文件夹创建错误！错误代码："+errortxt +"\n")
 
     def User_getStoken(self):
-        # 获取stoken
-        # https://drive-h.quark.cn/1/clouddrive/share/sharepage/token?pr=ucpro&fr=pc&uc_param_str=
-        # 获取文件ID
-        # https://drive-h.quark.cn/1/clouddrive/share/sharepage/detail?pr=ucpro&fr=pc&uc_param_str=&pwd_id=文件链接的ID&stoken=Stoken令牌&pdir_fid=0&force=0&_page=1&_size=50&_fetch_banner=1&_fetch_share=1&_fetch_total=1&_sort=file_type:asc,updated_at:desc
         print(Fore.LIGHTBLACK_EX + "正在获取Stoken令牌...\n")
         urltext = "https://drive-h.quark.cn/1/clouddrive/share/sharepage/token?pr=ucpro&fr=pc&uc_param_str="
 
+        #提取出链接最后面的ID
         self.fileId = str(self.quark_links).split('/')[-1].replace("'","").replace("]",'')
 
         post_data = {
@@ -162,6 +180,8 @@ class apf:
             "pwd_id":self.fileId
         }
         print(post_data)
+
+        # 开始获取stoken
         resu = req.post(url=urltext,headers=self.post_headers, json=post_data).text
         self.stoken = str(re.search('"stoken":"([^"]+)"',resu).group(1))
         if str(re.search(r'"status":([^"]+),',resu).group(1)) == "200":
@@ -172,6 +192,7 @@ class apf:
             print(Fore.LIGHTMAGENTA_EX + "Stoken令牌获取失败！" + "错误代码：{\n"+errortxt+"\n}\n")
 
     def User_getFileID(self):
+        # 开始获取First_fid跟shared fid token
         url = "https://drive-h.quark.cn/1/clouddrive/share/sharepage/detail?"
         params = {
             'pr': 'ucpro',
@@ -206,6 +227,7 @@ class apf:
             return
 
     def DepositFile(self):
+        # 开始转存文件
         url = "https://drive-pc.quark.cn/1/clouddrive/share/sharepage/save?pr=ucpro&fr=pc&uc_param_str="
         data = {
             "fid_list": [self.file_fids],
@@ -220,11 +242,10 @@ class apf:
         resu = req.post(url=url, headers=self.post_headers, json=data).text
         print(resu)
 
-
-
 if __name__ == "__main__":
     fun = apf()
 
+    #开始运行
     fun.getQuarkLink()
     fun.getUser_AllFiles()
     fun.getSelectorFile_Id()
